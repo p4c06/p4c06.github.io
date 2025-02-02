@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planets Simulation</title>
+ 
+    <link href="https://fonts.googleapis.com/css2?family=Barrio&display=swap" rel="stylesheet">
+    <style>
+        
+        body {
+            background-color: black;
+            color: white;
+            font-family: 'Barrio', cursive;
+        }
+        
+    </style>
+</head>
+<body>
+    <h1>Planets Simulation</h1>
+    <canvas id="canvas" width="2000" height="800"></canvas>
+    <button onclick="stop()">Stop</button>
+    <button onclick="start()">Start</button>
+    <button onclick="for (let i = 0; i < 10; ++i){frame()}">-></button>
+    <br>
+    <span id="fps">FPS: 50</span>
+    <input type="range" min="1" max="200" value="30" id="fpsR" oninput="FPS = this.value; document.getElementById('fps').innerText = 'FPS: ' + this.value; start()">
+    <br>
+    <span id="G">G: 5000</span>
+    <input type="range" min="1" max="10000" value="5000" id="GR" oninput="G = this.value; document.getElementById('G').innerText = 'G: ' + this.value">
+    <br>
+    <span id="SCALE">SCALE: 1</span>
+    <input type="range" min="0" max="2" value="1" step = "0.01" id="scaleR" oninput="SCALE = this.value; document.getElementById('scaleR').innerText = 'SCALE: ' + this.value; drawAll()">
+    <br>
+    <input type="checkbox" id="vectors" name="vectors" onchange="showVectors = !showVectors; drawAll()">
+    <label for="vectors">Vectors</label><br>
+    <button onclick = "log()">Log</button>
+    <button onclick = "newPlanet()">New Planet</button>
+    
+    
+    <script>
+        let G = 5000;
+        const EPSILION = 1000;
+        const FACTOR = 1000;
+        let SCALE = 1;
+        let FPS = 30;
+        let showVectors = false;
+        let info = false;
+
+        class Vector {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+            }
+
+            static add(v1, v2) {
+                return new Vector(v1.x + v2.x, v1.y + v2.y);
+            }
+
+            magnitude() {
+                return Math.sqrt(this.x ** 2 + this.y ** 2);
+            }
+
+            unit() {
+                const magnitude = this.magnitude();
+                if (magnitude === 0) {
+                    return new Vector(0, 0);
+                }
+                return new Vector(this.x / magnitude, this.y / magnitude);
+            }
+
+            multiply(scalar) {
+                return new Vector(this.x * scalar, this.y * scalar);
+            }
+        }
+
+        class Planet {
+            constructor(mass, radius, position, velocity, name, color) {
+                this.mass = mass;
+                this.radius = radius;
+                this.position = position;
+                this.velocity = velocity.multiply(1 / FACTOR);
+                this.acceleration = new Vector(0, 0);
+                this.name = name;
+                this.color = color;
+            }
+
+            update(planets) {
+                this.acceleration = new Vector(0, 0);
+                for (const planet of planets) {
+                    if (this === planet) {
+                        continue;
+                    }
+                    const distance = -Math.sqrt((this.position.x - planet.position.x) ** 2 + (this.position.y - planet.position.y) ** 2) * FACTOR;
+                    const force = G * this.mass * planet.mass / Math.sqrt(distance ** 2 + EPSILION) ** 2;
+                    const direction = new Vector(this.position.x - planet.position.x, this.position.y - planet.position.y).unit();
+                    this.acceleration = Vector.add(direction.multiply(-force / this.mass), this.acceleration);
+                }
+                this.velocity = Vector.add(this.velocity, this.acceleration);
+                this.position = Vector.add(this.position, this.velocity);
+            }
+
+            draw(ctx) {
+                ctx.beginPath();
+                ctx.arc(this.position.x*SCALE, this.position.y*SCALE, this.radius*SCALE, 0, 2 * Math.PI);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.closePath();
+                if (showVectors) {
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(this.position.x*SCALE, this.position.y*SCALE);
+                    ctx.lineTo((this.position.x + this.velocity.x * 10) * SCALE, (this.position.y + this.velocity.y * 10) * SCALE);
+                    ctx.strokeStyle = "white";
+                    ctx.stroke();
+                    ctx.closePath();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(this.position.x*SCALE, this.position.y*SCALE);
+                    ctx.lineTo((this.position.x + this.acceleration.x * 100)*SCALE, (this.position.y + this.acceleration.y * 100)*SCALE);
+                    ctx.strokeStyle = "yellow";
+                    ctx.stroke();
+                    ctx.closePath();
+                }
+                
+            }
+        }
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let planets = [];
+
+        function drawAll(){
+            ctx.save();
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.restore();
+
+            planets.forEach(element => {
+                element.draw(ctx);
+            });
+        }
+        function updateAll(){
+            planets.forEach(element => {
+                element.update(planets);
+            });
+        }
+        function frame() {       
+           
+            drawAll();
+            updateAll();        
+        }
+        function resize(){
+            var width  = window.innerWidth;
+            var height = window.innerHeight-250; 
+            ctx.canvas.width  = width;
+            ctx.canvas.height = height;
+            ctx.translate(width/2,height/2);
+        }
+
+        function stop(){
+            clearInterval(animation);
+        }
+        function start(){
+            clearInterval(animation);
+            animation = setInterval(frame, 1000/FPS);
+        }
+        function log(){
+            let place = window.open("","Log", "width=300,height=100");
+            planets.forEach(element => {
+                place.document.write(element.name+": ("+Math.round(element.position.x)+", "+Math.round(element.position.y)+")"+"<br>");
+            });
+        }
+
+        function newPlanet(){
+            promptWindow = window.open("","Prompt", "width=700,height=150");
+            promptWindow.document.write("<input type='text' id='name' placeholder='Name'>");
+            promptWindow.document.write("<input type='text' id='mass' placeholder='Mass'>");
+            promptWindow.document.write("<input type='text' id='radius' placeholder='Radius'>");
+            promptWindow.document.write("<input type='text' id='color' placeholder='Color'><br>");
+            promptWindow.document.write("<input type='text' id='x' placeholder='X'>");
+            promptWindow.document.write("<input type='text' id='y' placeholder='Y'><br>");
+            promptWindow.document.write("<input type='text' id='vx' placeholder='Vx'>");
+            promptWindow.document.write("<input type='text' id='vy' placeholder='Vy'><br>");
+            promptWindow.document.write("<button onclick='window.opener.addPlanet()'>Add</button>");
+        }
+
+        function addPlanet(){
+            let name = promptWindow.document.getElementById('name').value;
+            let mass = parseFloat(promptWindow.document.getElementById('mass').value);
+            let radius = parseFloat(promptWindow.document.getElementById('radius').value);
+            let color = promptWindow.document.getElementById('color').value;
+            let x = parseFloat(promptWindow.document.getElementById('x').value);
+            let y = parseFloat(promptWindow.document.getElementById('y').value);
+            let vx = parseFloat(promptWindow.document.getElementById('vx').value);
+            let vy = parseFloat(promptWindow.document.getElementById('vy').value);
+            planets.push(new Planet(mass, radius, new Vector(x, y), new Vector(vx, vy), name, color));
+            promptWindow.close();
+            stop();
+            drawAll();
+        }
+
+        window.addEventListener('resize',resize,false);
+        resize();
+        
+        var animation = setInterval(frame, 1000/FPS);
+        let promptWindow;
+    </script>
+</body>
+</html>
