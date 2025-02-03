@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Planets Simulation</title>
  
-    <link href="https://fonts.googleapis.com/css2?family=Barrio&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Barrio" rel="stylesheet">
     <style>
         
         body {
@@ -36,6 +36,8 @@
     <label for="vectors">Vectors</label><br>
     <button onclick = "log()">Log</button>
     <button onclick = "newPlanet()">New Planet</button>
+    <br>
+    <button onclick = "exportPlanets()">Export Planets</button>
     
     
     <script>
@@ -174,7 +176,7 @@
         }
 
         function newPlanet(){
-            promptWindow = window.open("","Prompt", "width=700,height=150");
+            promptWindow = window.open("","Prompt", "width=700,height=150,popup=true,resizable=false");
             promptWindow.document.write("<input type='text' id='name' placeholder='Name'>");
             promptWindow.document.write("<input type='text' id='mass' placeholder='Mass'>");
             promptWindow.document.write("<input type='text' id='radius' placeholder='Radius'>");
@@ -184,13 +186,15 @@
             promptWindow.document.write("<input type='text' id='vx' placeholder='Vx'>");
             promptWindow.document.write("<input type='text' id='vy' placeholder='Vy'><br>");
             promptWindow.document.write("<button onclick='window.opener.addPlanet()'>Add</button>");
+            promptWindow.document.write("<hr><input type='file' id='input'>");
+            promptWindow.document.write("<button onclick='window.opener.importPlanets(document.getElementById(\"input\"))'>Import</button>");
         }
 
         function addPlanet(){
             let name = promptWindow.document.getElementById('name').value;
             let mass = parseFloat(promptWindow.document.getElementById('mass').value);
             let radius = parseFloat(promptWindow.document.getElementById('radius').value);
-            let color = promptWindow.document.getElementById('color').value;
+            let color = promptWindow.document.getElementById('color').value; 
             let x = parseFloat(promptWindow.document.getElementById('x').value);
             let y = parseFloat(promptWindow.document.getElementById('y').value);
             let vx = parseFloat(promptWindow.document.getElementById('vx').value);
@@ -200,8 +204,59 @@
             stop();
             drawAll();
         }
+        function importPlanets(input){
+            var file = input.files[0];
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                planetsJSON = JSON.parse(e.target.result);
+                planetsJSON.forEach(element => {
+                    planets.push(new Planet(element.mass, element.radius, new Vector(element.position.x, element.position.y), new Vector(element.velocity.x, element.velocity.y), element.name, element.color));
+                });
+            }
+            reader.readAsText(file);
+            promptWindow.close();
+        }
+        function download(filename, text) {
+                var element = document.createElement('a');
+                element.setAttribute('href', 'data:JSON/plain;charset=utf-8,' + encodeURIComponent(text));
+                element.setAttribute('download', filename);
+
+                element.style.display = 'none';
+                document.body.appendChild(element);
+
+                element.click();
+
+                document.body.removeChild(element);
+        }
+        function exportPlanets(){
+            download("planets.json",JSON.stringify(planets));
+        }
 
         window.addEventListener('resize',resize,false);
+        window.addEventListener('load',resize,false);
+        window.addEventListener('keypress',function(e){
+            if(e.key == "d"){
+                planets.forEach(element => {
+                    element.position.x += 10;
+                });
+            }
+            if(e.key == "a"){
+                planets.forEach(element => {
+                    element.position.x -= 10;
+                });
+            }
+            if(e.key == "w"){
+                planets.forEach(element => {
+                    element.position.y -= 10;
+                });
+            }
+            if(e.key == "s"){
+                planets.forEach(element => { 
+                    element.position.y += 10;
+                });
+            }
+            drawAll();
+        },false);
         resize();
         
         var animation = setInterval(frame, 1000/FPS);
