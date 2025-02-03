@@ -229,7 +229,7 @@
                 document.body.removeChild(element);
         }
         function exportPlanets(){
-            download("planets.json",JSON.stringify(planets));
+            download("planets.json",JSON.stringify(planets, null, "\t"));
         }
 
         window.addEventListener('resize',resize,false);
